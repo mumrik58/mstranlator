@@ -5,7 +5,10 @@ Machine translation using Microsoft Translator API
 """
 import sys
 import argparse
-import http.client, urllib.parse, uuid, json
+import uuid, json
+import requests
+from requests.packages.urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
 from logging import getLogger, StreamHandler, FileHandler, Formatter, DEBUG
 
 __author__ = 'Yuta OHURA <bultau@gmail.com>'
@@ -21,10 +24,10 @@ class Translator:
 
     def __init__(self, api_key):
         self._api_key = api_key
-        self._host = 'api.cognitive.microsofttranslator.com'
+        self._host = 'https://api.cognitive.microsofttranslator.com'
         self._path = '/translate?api-version=3.0'
         self._headers = {
-            'Ocp-Apim-Subscription-Key': api_key,
+            'Ocp-Apim-Subscription-Key': self._api_key,
             'Content-type': 'application/json',
             'X-ClientTraceId': str(uuid.uuid4())
             }
@@ -33,15 +36,22 @@ class Translator:
         """
         Main function of translation
         """
+        req = requests.Session()
+        retries = Retry(total=5,
+                    backoff_factor=1,
+                    status_forcelist=[500, 502, 503, 504])
+        req.mount('https://', HTTPAdapter(max_retries=retries))
+        req.mount('http://', HTTPAdapter(max_retries=retries))
+        
         requestBody = [{
             'Text' : base_string,
             }]
-        content = json.dumps(requestBody, ensure_ascii=False).encode('utf-8')
-        conn = http.client.HTTPSConnection(self._host)
-        conn.request ('POST', self._path + '&to=' + to_lang, content, self._headers)
-        response = conn.getresponse()
 
-        return response.read()
+        content = json.dumps(requestBody, ensure_ascii=False).encode('utf-8')
+ 
+        res = req.request('POST', self._host + self._path + '&to=' + to_lang, data=content, headers=self._headers, timeout=30)
+
+        return res.text
 
 
 if __name__ == '__main__':
