@@ -81,8 +81,10 @@ if __name__ == '__main__':
     trs = Translator(args.api_key)
 
     if args.input_string is not None:
-        result = trs.translate(args.string, args.to)
-        output = json.dumps(json.loads(result), indent=4, ensure_ascii=False)
+        ret_json = trs.translate(args.input_string, args.to)
+        ret_dict = json.loads(ret_json)
+        logger.debug(json.dumps(ret_dict, indent=4, ensure_ascii=False))
+        print(ret_dict[0]['translations'][0]['text'])
     elif args.input_file is not None:
         wb = openpyxl.load_workbook(args.input_file)
         sheet = wb['data']
